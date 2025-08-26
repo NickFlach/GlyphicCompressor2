@@ -10,7 +10,7 @@ import { factorizePartitions, exportFactorizationAnalysis } from "./ogc/factoriz
 import { quantizePartitions, analyzeQuantizationQuality } from "./ogc/quantize.js";
 import { applyEntropyCoding } from "./ogc/entropy.js";
 import { generateGlyph } from "./ogc/glyph.js";
-import { reconstructFromCompression, calculateReconstructionMetrics } from "./ogc/reconstruct.js";
+import { reconstructFromCompression } from "./ogc/reconstruct.js";
 import cors from "cors";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -50,7 +50,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Generate synthetic error:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -83,7 +83,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ modelId: storedModel.id });
     } catch (error) {
       console.error("Upload model error:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -100,7 +100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         model = {
-          tensors: storedModel.tensors,
+          tensors: storedModel.tensors as any,
           shape: storedModel.shape,
           parameters: storedModel.parameters,
           sparsity: storedModel.sparsity,
@@ -114,7 +114,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Build influence graph
-      const tensorModel = { tensors: [{ dataSync: () => model.tensors.flat(), shape: model.shape, arraySync: () => model.tensors }], ...model };
+      const tensorModel = { 
+        ...model,
+        tensors: [{ 
+          dataSync: () => (model.tensors as any).flat(), 
+          shape: model.shape, 
+          arraySync: () => model.tensors 
+        }] as any
+      };
       const influenceGraph = await buildInfluenceGraph(tensorModel);
       
       // Partition graph
@@ -182,7 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Encode error:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -206,7 +213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Decode error:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -227,10 +234,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Build influence graph
         const tensorModel = { 
           tensors: [{ 
-            dataSync: () => model.tensors.flat(), 
+            dataSync: () => (model.tensors as any).flat(), 
             shape: model.shape, 
             arraySync: () => model.tensors 
-          }], 
+          }] as any, 
           shape: model.shape,
           parameters: model.parameters,
           sparsity: model.sparsity,
@@ -264,7 +271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Inspect error:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -275,7 +282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(models);
     } catch (error) {
       console.error("Get models error:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
