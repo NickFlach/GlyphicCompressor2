@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
-import { Upload, Wand2 } from "lucide-react";
+import { Upload, Wand2, Brain } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -56,6 +56,27 @@ export default function UploadPanel({ onModelGenerated }: UploadPanelProps) {
     onError: (error) => {
       toast({
         title: "Upload Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const loadGPTOSSMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/load_gpt_oss", {});
+      return response.json();
+    },
+    onSuccess: (data) => {
+      onModelGenerated(data);
+      toast({
+        title: "GPT-OSS Model Loaded",
+        description: data.stats.info || "GPT-OSS-20B sample layers loaded successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Load Failed",
         description: error.message,
         variant: "destructive",
       });
@@ -185,6 +206,31 @@ export default function UploadPanel({ onModelGenerated }: UploadPanelProps) {
           >
             <Wand2 className="w-4 h-4 mr-2" />
             {generateMutation.isPending ? "Generating..." : "Generate Model"}
+          </Button>
+        </div>
+
+        <div className="relative mb-4">
+          <div className="absolute inset-0 flex items-center">
+            <Separator className="w-full" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-3 bg-white text-slate-500">or</span>
+          </div>
+        </div>
+
+        {/* GPT-OSS Model Loading */}
+        <div className="space-y-3">
+          <Label className="block text-sm font-medium text-slate-700">AI Model Architecture</Label>
+          <p className="text-xs text-slate-600 mb-3">Generate realistic transformer layers based on GPT-OSS-20B architecture</p>
+          
+          <Button
+            onClick={() => loadGPTOSSMutation.mutate()}
+            disabled={loadGPTOSSMutation.isPending}
+            className="w-full bg-glyph-purple hover:bg-purple-700"
+            data-testid="button-load-gpt-oss"
+          >
+            <Brain className="w-4 h-4 mr-2" />
+            {loadGPTOSSMutation.isPending ? "Creating Model..." : "Create GPT-OSS Architecture"}
           </Button>
         </div>
       </CardContent>

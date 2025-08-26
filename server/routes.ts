@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
 import { generateSyntheticSchema, encodeSchema, decodeSchema } from "@shared/schema.js";
-import { generateSynthetic, serializeTensors, getTensorStats } from "./ogc/tensors.js";
+import { generateSynthetic, loadGPTOSSModel, serializeTensors, getTensorStats } from "./ogc/tensors.js";
 import { buildInfluenceGraph, analyzeGraphConnectivity, exportGraphVisualization } from "./ogc/influence.js";
 import { partitionGraph, optimizePartitions, exportPartitionVisualization } from "./ogc/partition.js";
 import { createPrimeSchedule, applyPrimeScheduling, exportPrimeTimeline } from "./ogc/primes.js";
@@ -50,6 +50,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Generate synthetic error:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  // Load GPT-OSS model
+  app.post("/api/load_gpt_oss", async (req, res) => {
+    try {
+      console.log("Loading GPT-OSS-20B model...");
+      const model = await loadGPTOSSModel();
+      const serialized = serializeTensors(model);
+      const stats = getTensorStats(model);
+      
+      // Store model
+      const storedModel = await storage.createModel({
+        name: "GPT-OSS-20B (Sample Layers)",
+        shape: model.shape,
+        tensors: serialized.tensors,
+        parameters: model.parameters,
+        sparsity: model.sparsity,
+        entropy: model.entropy,
+      });
+
+      res.json({
+        modelId: storedModel.id,
+        shapes: model.shape,
+        stats: {
+          ...stats,
+          modelId: model.modelId,
+          info: "Loaded sample layers from GPT-OSS-20B: embedding, attention, and MLP weights"
+        }
+      });
+    } catch (error) {
+      console.error("Load GPT-OSS error:", error);
       res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });

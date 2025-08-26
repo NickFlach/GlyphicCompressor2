@@ -1,5 +1,7 @@
 import * as tf from '@tensorflow/tfjs';
 import { randomSeed } from './utils.js';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Tensor model synthesis and loading utilities
@@ -143,6 +145,74 @@ function calculateEntropy(values: number[]): number {
   }
   
   return entropy;
+}
+
+/**
+ * Create a realistic GPT-style model simulation using the actual GPT-OSS config
+ */
+export async function loadGPTOSSModel(modelPath: string = 'gpt-oss-20b'): Promise<TensorModel> {
+  try {
+    // Load the actual model config to get realistic dimensions
+    const configPath = path.join(modelPath, 'original', 'config.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    
+    console.log(`Creating GPT-OSS-20B simulation based on config:`, {
+      hidden_size: config.hidden_size,
+      num_hidden_layers: config.num_hidden_layers,
+      vocab_size: config.vocab_size
+    });
+    
+    // Create realistic transformer layer tensors based on actual architecture
+    const tensors: tf.Tensor[] = [];
+    let totalParams = 0;
+    let allValues: number[] = [];
+    
+    // Embedding layer: vocab_size x hidden_size
+    const embedSize = Math.min(config.vocab_size || 32768, 4096); // Limit for demo
+    const hiddenSize = config.hidden_size || 2560;
+    const embedTensor = tf.randomNormal([embedSize, Math.min(hiddenSize, 512)], 0, 0.02);
+    tensors.push(embedTensor);
+    totalParams += embedTensor.size;
+    
+    // Attention weights: hidden_size x hidden_size (Q, K, V projections)
+    const attnSize = Math.min(hiddenSize, 256);
+    const qTensor = tf.randomNormal([attnSize, attnSize], 0, 0.02);
+    const kTensor = tf.randomNormal([attnSize, attnSize], 0, 0.02);
+    const vTensor = tf.randomNormal([attnSize, attnSize], 0, 0.02);
+    tensors.push(qTensor, kTensor, vTensor);
+    totalParams += qTensor.size + kTensor.size + vTensor.size;
+    
+    // MLP weights: hidden_size x intermediate_size
+    const mlpSize = Math.min(hiddenSize * 4, 1024);
+    const mlpTensor = tf.randomNormal([attnSize, Math.min(mlpSize, 512)], 0, 0.02);
+    tensors.push(mlpTensor);
+    totalParams += mlpTensor.size;
+    
+    // Collect sample values for statistics
+    for (const tensor of tensors) {
+      const values = Array.from(tensor.dataSync()).slice(0, 1000); // Sample for stats
+      allValues.push(...values);
+    }
+    
+    const nonZeroValues = allValues.filter(x => Math.abs(x) > 1e-6);
+    const sparsity = 1 - (nonZeroValues.length / allValues.length);
+    const entropy = calculateEntropy(nonZeroValues);
+    
+    console.log(`Created GPT-OSS simulation with ${tensors.length} layers, ${totalParams} total parameters`);
+    
+    return {
+      tensors,
+      shape: Array.from(embedTensor.shape), // Use embedding shape as representative
+      parameters: totalParams,
+      sparsity,
+      entropy,
+      modelId: `gpt-oss-20b_simulation`
+    };
+    
+  } catch (error) {
+    console.error('Error creating GPT-OSS simulation:', error);
+    throw new Error(`Failed to create GPT-OSS simulation: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 /**
