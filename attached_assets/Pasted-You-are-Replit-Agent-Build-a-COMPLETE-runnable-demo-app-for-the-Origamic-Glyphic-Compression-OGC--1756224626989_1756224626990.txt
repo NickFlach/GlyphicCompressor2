@@ -1,0 +1,102 @@
+You are Replit Agent. Build a COMPLETE runnable demo app for the “Origamic Glyphic Compression (OGC)” system using Node.js + Express + @tensorflow/tfjs (CPU) and a Vite/React/TypeScript + Tailwind UI that is SERVED by the same Express app on a single $PORT.
+
+# GOAL
+End-to-end demo:
+- Load or synthesize a tiny “model” (tensors).
+- Build an influence graph; partition into ~√n blocks; mark boundary nodes.
+- Apply prime-based scheduling (plain primes, AP motifs, p^2+4q^2 anchors) to allocate precision tiers.
+- Partition-wise factorization (SVD mock), quantization (codebooks), entropy (ordered byte streams + zlib).
+- Produce a colorful “glyph” PNG + JSON header (with ECC parity).
+- Decode to reconstruct; report error metrics.
+- UI to visualize partitions, boundaries, prime timeline, glyph; buttons to encode/decode/download.
+
+# TECH
+- Backend: Node 20+, Express, @tensorflow/tfjs (plain, no tfjs-node), zlib, pngjs, crypto, tiny-secp256k1 (for optional signing), simple Reed–Solomon parity (pure JS lib or custom parity stripes), cors, morgan, yup/zod for validation.
+- Frontend: Vite + React + TypeScript + TailwindCSS + recharts + lucide-react.
+- ONE server process:
+  - In dev: Express serves API; Vite builds once then static files are served from /dist (no second dev server).
+  - In prod: `npm start` builds UI and starts Express which serves `/dist` and `/api/*`.
+
+# PROJECT STRUCTURE
+.
+├─ server/
+│  ├─ index.ts                # Express app; serves API + static /dist
+│  ├─ ogc/
+│  │  ├─ tensors.ts           # synth/load tiny model tensors
+│  │  ├─ influence.ts         # influence graph (|A| or random-probe Jacobian proxy)
+│  │  ├─ partition.ts         # √n partitions; boundary detect; supergraph build
+│  │  ├─ primes.ts            # primes, AP generator, p^2+4q^2 anchors, scheduling
+│  │  ├─ factorize.ts         # SVD mock via numeric JS; block low-rank
+│  │  ├─ quantize.ts          # k-means VQ per partition; boundary precision tiers
+│  │  ├─ entropy.ts           # supergraph-ordered payload; zlib deflate/inflate
+│  │  ├─ glyph.ts             # PNG synthesis (tiles, arcs); header JSON; ECC parity
+│  │  ├─ reconstruct.ts       # unfold pipeline + checksums + metrics (MSE/PSNR)
+│  │  └─ utils.ts
+│  └─ routes.ts               # /api endpoints
+├─ web/
+│  ├─ index.html
+│  ├─ src/
+│  │  ├─ main.tsx, App.tsx
+│  │  ├─ components/
+│  │  │  ├─ UploadPanel.tsx
+│  │  │  ├─ PartitionView.tsx
+│  │  │  ├─ PrimeTimeline.tsx
+│  │  │  ├─ GlyphCanvas.tsx
+│  │  │  ├─ MetricsCard.tsx
+│  │  │  └─ ActionBar.tsx
+│  │  └─ lib/api.ts
+├─ package.json               # single workspace; scripts build UI then run server
+├─ tailwind.config.ts, postcss.config.js, tsconfig.json
+├─ README.md
+└─ .replit and replit.nix     # ensure Node 20; run "npm start"
+
+# BACKEND API (JSON; PNG/header base64)
+- POST /api/generate_synthetic { n:int, density:float, seed:int } 
+  -> { modelId, shapes, stats }
+- POST /api/upload_model (multipart; small JSON of tensors ok)
+  -> { modelId }
+- POST /api/encode { modelId or tensors, params:{ partitionSize?, quant:{interiorBits,boundaryBits}, prime:{mode:'primes'|'ap'|'p2plus4q2', start?, limit?, apLen?} } 
+  -> { glyphPngBase64, headerJson, stats:{origBytes, compBytes, eccBytes, sha256} }
+- POST /api/decode { glyphPngBase64, headerJson }
+  -> { tensors, stats:{mse, psnr, checksumOk} }
+- GET  /api/inspect/:modelId 
+  -> { graph:{n, edges}, partitions, boundaries, supergraph }
+- GET  /api/health -> { status:'ok' }
+
+# ALGORITHMS (concise, JS-friendly)
+- Influence: if no model, synthesize block-diagonal matrix with cross-block couplers; influence ≈ abs(A); optional random-probe Jacobian using tf.randomNormal inputs.
+- Partition: √n blocks; boundary if edge crosses blocks. Build supergraph between boundary nodes; intra-partition shortest paths via Dijkstra on local graph (plain JS).
+- Prime schedule:
+  - primes(): sieve up to limit
+  - arithmeticProgression(len, startPrime, diffPrime)
+  - p2plus4q2Anchors(k): choose k pairs (p,q) consecutive primes; mark high-precision pivots
+- Quantization: per-partition k-means codebook (k=16/32) in JS; interiors use 3–4b indices; boundaries use 6–8b (or small delta residuals).
+- Factorization: simple SVD mock using numeric JS (or tf.svd on small blocks); rank chosen by supergraph centrality & prime checkpoints.
+- Entropy: order streams along a Hilbert-like index over partitions; deflate with zlib; store parity chunks for ECC (e.g., every Nth chunk has XOR parity or small Reed–Solomon).
+- Glyph: canvas via pngjs; tiles map partitions via Hilbert curve; color encodes codebook family/precision; overlay arcs for boundary couplings; embed a small legend band.
+
+# FRONTEND UX
+- Tabs: [Model] [Graph] [Primes] [Encode] [Decode]
+- Model: upload or synthesize; show tensor heatmap.
+- Graph: partition heatmap + boundary overlay; supergraph mini-map.
+- Primes: timeline selector (primes/AP/p^2+4q^2); preview active pivots.
+- Encode: show glyph + header; size/bpp/ECC; download buttons (glyph.png, header.json).
+- Decode: reconstruct; show metrics and side-by-side heatmaps (before/after).
+- All actions call the API; optimistic UI with toasts, basic errors.
+
+# SCRIPTS (single server, one port)
+- "build:web": "cd web && npm ci && npm run build"
+- "build": "npm run build:web && tsc -p server"
+- "start": "npm run build && node dist/server/index.js"
+- Ensure Express serves `web/dist` statics and listens on `process.env.PORT || 3000`.
+
+# ACCEPTANCE
+- [ ] Clicking Run launches server on $PORT; UI is served at root.
+- [ ] Synthetic path works (no upload).
+- [ ] Encode produces glyph PNG + header JSON; decode verifies checksum/ECC.
+- [ ] Prime mode visibly changes precision allocation and partition highlights.
+- [ ] README explains architecture, commands, limitations, and future tfjs-node/GPU swap.
+
+# NOTES
+- Keep tensors tiny (<= 4k params) for instant CPU demo.
+- Prefer clarity; include docstrings/types. Use pure JS libs (no native addons).
