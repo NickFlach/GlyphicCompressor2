@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import * as tf from "@tensorflow/tfjs";
 import { storage } from "./storage.js";
 import { generateSyntheticSchema, encodeSchema, decodeSchema } from "@shared/schema.js";
 import { generateSynthetic, loadGPTOSSModel, serializeTensors, getTensorStats } from "./ogc/tensors.js";
