@@ -146,14 +146,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Either modelId or tensors required" });
       }
 
-      // Build influence graph
+      // Build influence graph - convert stored arrays back to tensors
+      // model.tensors is an array of tensor arrays from multiple layers
+      const tensorArrays = model.tensors as number[][][];
+      const firstTensorArray = tensorArrays[0]; // Use the first tensor (embedding layer)
+      
       const tensorModel = { 
         ...model,
-        tensors: [{ 
-          dataSync: () => (model.tensors as any).flat(), 
-          shape: model.shape, 
-          arraySync: () => model.tensors 
-        }] as any
+        tensors: [tf.tensor2d(firstTensorArray, model.shape as [number, number])]
       };
       const influenceGraph = await buildInfluenceGraph(tensorModel);
       
@@ -264,13 +264,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let graph = await storage.getGraphByModelId(modelId);
       
       if (!graph) {
-        // Build influence graph
+        // Build influence graph - convert stored arrays back to tensors  
+        // model.tensors is an array of tensor arrays from multiple layers
+        const tensorArrays = model.tensors as number[][][];
+        const firstTensorArray = tensorArrays[0]; // Use the first tensor (embedding layer)
+        
         const tensorModel = { 
-          tensors: [{ 
-            dataSync: () => (model.tensors as any).flat(), 
-            shape: model.shape, 
-            arraySync: () => model.tensors 
-          }] as any, 
+          tensors: [tf.tensor2d(firstTensorArray, model.shape as [number, number])], 
           shape: model.shape,
           parameters: model.parameters,
           sparsity: model.sparsity,
