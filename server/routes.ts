@@ -193,7 +193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const quantizationResult = quantizePartitions(mockFactorization, partitionResult, params.quant);
       
       // Apply entropy coding
-      const entropyResult = applyEntropyCoding(quantizationResult, partitionResult);
+      const entropyResult = await applyEntropyCoding(quantizationResult, partitionResult);
       
       // Generate glyph
       const glyphResult = generateGlyph(entropyResult, partitionResult, primeSchedule, model.modelId);

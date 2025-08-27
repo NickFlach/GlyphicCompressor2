@@ -37,14 +37,14 @@ export interface EntropyHeader {
 /**
  * Apply entropy coding to quantized data with supergraph ordering
  */
-export function applyEntropyCoding(
+export async function applyEntropyCoding(
   quantization: QuantizationResult,
   partitionResult: PartitionResult,
   options: {
     compressionLevel?: number;
     eccStrength?: 'light' | 'standard' | 'strong';
   } = {}
-): EntropyResult {
+): Promise<EntropyResult> {
   const { compressionLevel = 6, eccStrength = 'standard' } = options;
   
   // Order data streams using Hilbert-like indexing
@@ -60,10 +60,10 @@ export function applyEntropyCoding(
   const eccParity = createECCParity(compressedPayload, eccStrength);
   
   // Calculate checksums
-  const crypto = require('crypto');
-  const crc32 = require('crc-32');
+  const crypto = await import('crypto');
+  const crc32 = await import('crc-32');
   
-  const crcHash = crc32.buf(compressedPayload).toString(16);
+  const crcHash = crc32.default.buf(compressedPayload).toString(16);
   const sha256Hash = crypto.createHash('sha256').update(compressedPayload).digest('hex');
   
   // Create header
@@ -261,15 +261,15 @@ function packIndices(indices: number[], bitsPerIndex: number): Buffer {
 /**
  * Decode entropy-coded data
  */
-export function decodeEntropyData(
+export async function decodeEntropyData(
   compressedPayload: Buffer,
   eccParity: Buffer,
   header: EntropyHeader
-): {
+): Promise<{
   codebooks: any[];
   verified: boolean;
   error?: string;
-} {
+}> {
   try {
     // Verify ECC first
     const eccVerified = verifyECCParity(compressedPayload, eccParity);
@@ -282,10 +282,10 @@ export function decodeEntropyData(
     }
     
     // Verify checksums
-    const crypto = require('crypto');
-    const crc32 = require('crc-32');
+    const crypto = await import('crypto');
+    const crc32 = await import('crc-32');
     
-    const calculatedCRC = crc32.buf(compressedPayload).toString(16);
+    const calculatedCRC = crc32.default.buf(compressedPayload).toString(16);
     const calculatedSHA256 = crypto.createHash('sha256').update(compressedPayload).digest('hex');
     
     if (calculatedCRC !== header.checksums.crc32 || calculatedSHA256 !== header.checksums.sha256) {
