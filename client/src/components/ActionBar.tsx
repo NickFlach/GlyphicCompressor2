@@ -40,7 +40,7 @@ export default function ActionBar({ glyphResult, onReconstruction, reconstructio
       onReconstruction(data);
       toast({
         title: "Reconstruction Complete",
-        description: `MSE: ${data.stats.mse.toFixed(6)}, PSNR: ${data.stats.psnr.toFixed(2)} dB`,
+        description: `MSE: ${data.stats.mse ? data.stats.mse.toFixed(6) : 'N/A'}, PSNR: ${data.stats.psnr ? data.stats.psnr.toFixed(2) : 'N/A'} dB`,
       });
     },
     onError: (error) => {
