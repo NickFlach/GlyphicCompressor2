@@ -36,8 +36,28 @@ export async function buildInfluenceGraph(model: TensorModel, method: 'abs' | 'j
  * Build influence graph using absolute values |A|
  */
 function buildAbsoluteInfluenceGraph(tensor: tf.Tensor): InfluenceGraph {
-  const data = tensor.arraySync() as number[][];
-  const [rows, cols] = tensor.shape;
+  const data = tensor.arraySync();
+  const shape = tensor.shape;
+  
+  // Handle different tensor shapes - flatten if needed
+  let flatData: number[];
+  let rows: number, cols: number;
+  
+  if (shape.length === 1) {
+    // 1D tensor - reshape to square-ish matrix
+    flatData = data as number[];
+    rows = Math.ceil(Math.sqrt(flatData.length));
+    cols = Math.ceil(flatData.length / rows);
+  } else if (shape.length === 2) {
+    // 2D tensor - use directly
+    flatData = (data as number[][]).flat();
+    [rows, cols] = shape;
+  } else {
+    // Higher dimensional - flatten and reshape
+    flatData = tensor.dataSync() as number[];
+    rows = Math.ceil(Math.sqrt(flatData.length));
+    cols = Math.ceil(flatData.length / rows);
+  }
   
   const edges: number[][] = [];
   const weights: number[][] = [];
@@ -48,7 +68,10 @@ function buildAbsoluteInfluenceGraph(tensor: tf.Tensor): InfluenceGraph {
     weights[i] = [];
     
     for (let j = 0; j < cols; j++) {
-      const weight = Math.abs(data[i][j]);
+      const idx = i * cols + j;
+      if (idx >= flatData.length) break;
+      
+      const weight = Math.abs(flatData[idx]);
       if (weight > 1e-6) {
         edges[i].push(j);
         weights[i].push(weight);

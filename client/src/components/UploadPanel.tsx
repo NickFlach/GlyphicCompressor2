@@ -127,7 +127,7 @@ export default function UploadPanel({ onModelGenerated }: UploadPanelProps) {
         {/* Upload Section */}
         <div className="mb-6">
           <Label className="block text-sm font-medium text-slate-700 mb-2">Upload Model</Label>
-          <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-glyph-blue transition-colors cursor-pointer">
+          <div className="relative border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-glyph-blue transition-colors cursor-pointer">
             <Upload className="mx-auto h-8 w-8 text-slate-400 mb-2" />
             <p className="text-sm text-slate-600 mb-1">Drop JSON tensor file or click to browse</p>
             <p className="text-xs text-slate-500">Max size: 1MB</p>

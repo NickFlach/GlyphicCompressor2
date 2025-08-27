@@ -95,7 +95,7 @@ export default function ActionBar({ glyphResult, onReconstruction, reconstructio
             <div className="space-y-4">
               <div>
                 <Label className="block text-sm font-medium text-slate-700 mb-2">Glyph PNG</Label>
-                <div className="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:border-glyph-blue transition-colors cursor-pointer">
+                <div className="relative border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:border-glyph-blue transition-colors cursor-pointer">
                   <Upload className="mx-auto h-6 w-6 text-slate-400 mb-2" />
                   <p className="text-sm text-slate-600">Drop glyph PNG file</p>
                   <input
@@ -113,7 +113,7 @@ export default function ActionBar({ glyphResult, onReconstruction, reconstructio
 
               <div>
                 <Label className="block text-sm font-medium text-slate-700 mb-2">Header JSON</Label>
-                <div className="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:border-glyph-blue transition-colors cursor-pointer">
+                <div className="relative border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:border-glyph-blue transition-colors cursor-pointer">
                   <Upload className="mx-auto h-6 w-6 text-slate-400 mb-2" />
                   <p className="text-sm text-slate-600">Drop header JSON file</p>
                   <input
