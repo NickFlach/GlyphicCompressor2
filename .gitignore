@@ -4,3 +4,9 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Large model files - don't track in git
+gpt-oss-20b/
+gpt-oss-120b/
+*.safetensors
+*.onnx
